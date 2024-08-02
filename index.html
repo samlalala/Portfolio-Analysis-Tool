@@ -1,0 +1,92 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Portfolio Analysis Form</title>
+    <style>
+        #results {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+        #results h2, #results h3, #results h4 {
+            color: #333;
+        }
+        #results p, #results h4 {
+            margin-left: 20px;
+        }
+        strong {
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Portfolio Analysis Tool</h1>
+    <form action="/portfolioAnalysis" method="post">
+        <label for="tickers">Enter Tickers (comma-separated):</label>
+        <input type="text" id="tickers" name="tickers" placeholder="AAPL, GOOG, MSFT" required>
+        <button type="submit">Submit</button>
+    </form>
+
+    <div id="results"></div> <!-- Container for results -->
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(form);
+                const tickers = formData.get('tickers');
+                fetch('/portfolioAnalysis', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ tickers: tickers })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const resultsDiv = document.getElementById('results');
+                    const optimizedWeightsDiv = document.createElement('div');
+                    const correlationMatricesDiv = document.createElement('div');
+                    const explanationDiv = document.createElement('div');
+
+                    // Format optimized weights
+                    optimizedWeightsDiv.innerHTML = '<h3>Optimized Weights:</h3>' +
+                        `<p>Cholesky: ${JSON.stringify(data.optimized_weights_cholesky)}</p>` +
+                        `<p>Eigen: ${JSON.stringify(data.optimized_weights_eigen)}</p>`;
+
+                    // Format correlation matrices
+                    correlationMatricesDiv.innerHTML = '<h3>Correlation Matrices:</h3>' +
+                        formatCorrelationMatrix(data.correlation_matrix_historical, "Historical") +
+                        formatCorrelationMatrix(data.correlation_matrix_cholesky, "Cholesky Simulation") +
+                        formatCorrelationMatrix(data.correlation_matrix_eigen, "Eigenvalue Simulation");
+
+                    // Explanation
+                    explanationDiv.innerHTML = `<h3>Analysis Explanation:</h3><p>${data.explanation}</p>`;
+
+                    // Append all parts to results div
+                    resultsDiv.appendChild(optimizedWeightsDiv);
+                    resultsDiv.appendChild(correlationMatricesDiv);
+                    resultsDiv.appendChild(explanationDiv);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('results').innerHTML = 'Error loading data.';
+                });
+            });
+        });
+
+        function formatCorrelationMatrix(matrix, title) {
+            let html = `<h4>${title} Correlation Matrix:</h4>`;
+            for (const key in matrix) {
+                html += `<strong>${key}</strong>: ` +
+                    Object.entries(matrix[key]).map(([ticker, value]) => `${ticker}: ${value.toFixed(3)}`).join(', ') + '<br>';
+            }
+            return html;
+        }
+    </script>
+</body>
+</html>
